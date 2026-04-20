@@ -261,6 +261,47 @@ class PrincipalView:
         categorias = ["Dulces", "Salados", "Especial"]
         self.row_categorias.controls = [self.categoria_pill(c) for c in categorias]
 
+   # --- LÓGICA DE MODAL ESTILO GITHUB ---
+    def abrir_modal(self, e):
+        # Usamos ft.context.page para mostrar el diálogo directamente
+        ft.context.page.show_dialog(
+            ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Venta #017 08/04/2026", weight=ft.FontWeight.BOLD, color=self.COLOR_MARINO),
+                content=ft.Column(
+                    tight=True,
+                    spacing=15,
+                    controls=[
+                        ft.Container(
+                            content=ft.Column([
+                                ft.Text("Caja 1", weight=ft.FontWeight.BOLD, color="black"),
+                                ft.Text("Caja a Cargo de: Marco A. Vargas Valle", size=12, color="black"),
+                            ], spacing=2),
+                            bgcolor="#D1D9E6",
+                            padding=15,
+                            border_radius=10,
+                        ),
+                        ft.Text("Monto a Pagar", weight=ft.FontWeight.BOLD, color="black"),
+                        ft.Container(
+                            content=ft.Row([
+                                ft.Text(self.text_total.value, size=24, weight=ft.FontWeight.BOLD, color="black"),
+                                ft.Text("calculado automáticamente", size=10, color="black54"),
+                            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                            bgcolor="#D1D9E6",
+                            padding=20,
+                            border_radius=10,
+                        ),
+                    ],
+                ),
+                actions=[
+                    ft.TextButton(
+                        "Confirmar y Cerrar", 
+                        on_click=lambda _: ft.context.page.pop_dialog()
+                    )
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+        )
 
     # --- CONSTRUCCIÓN DE LA VISTA ---
     def build(self):
@@ -303,7 +344,13 @@ class PrincipalView:
                 self.btn_oscuro("Tarjeta", expand=1),
                 self.btn_oscuro("Transferencia", expand=1),
                 self.btn_blanco("Crear como apartado", expand=1, icon=ft.Icons.STAR_BORDER),
-                self.btn_blanco("Imprimir Ticket", expand=1, icon=ft.Icons.PRINT),
+                # Botón que dispara el modal
+                self.btn_blanco(
+                    "Imprimir Ticket", 
+                    expand=1, 
+                    icon=ft.Icons.PRINT, 
+                    on_click=self.abrir_modal
+                ),
                 self.btn_blanco("Finalizar Venta", expand=1, icon=ft.Icons.CHECK)
             ], spacing=10),
             padding=ft.Padding.symmetric(horizontal=15, vertical=5)
