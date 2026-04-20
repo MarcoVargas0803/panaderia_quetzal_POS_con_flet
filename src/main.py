@@ -4,6 +4,8 @@ from views.login import LoginView
 from views.registro import RegistroView
 from views.ventana_principal import PrincipalView
 from views.consulta_ventas import ConsultaVentasView
+from views.ventana_principal_produccion import PrincipalProduccionView
+from views.ventana_principal_consultas import PrincipalConsultasView
 class App:
     def __init__(self, page: ft.Page):
         self.page = page
@@ -21,6 +23,8 @@ class App:
         self.registro_view = RegistroView(self.navegar)
         self.principal_view = PrincipalView(self.navegar)
         self.consulta_ventas_view = ConsultaVentasView(self.navegar)
+        self.ventana_principal_produccion = PrincipalProduccionView(self.navegar)
+        self.ventana_principal_consultas = PrincipalConsultasView(self.navegar)
 
         # Configurar eventos
         self.page.on_route_change = self.route_change
@@ -48,7 +52,11 @@ class App:
             self.page.views.append(self.principal_view.build())
         elif self.page.route == "/consulta_ventas":
             self.page.views.append(self.consulta_ventas_view.build())
-
+        elif self.page.route == "/ventana_principal_produccion":
+            self.page.views.append(self.ventana_principal_produccion.build())
+        elif self.page.route == "/ventana_principal_consultas":
+            self.page.views.append(self.ventana_principal_consultas.build())
+        
         self.page.update()
 
     def view_pop(self, view):

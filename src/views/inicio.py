@@ -13,8 +13,8 @@ class InicioView:
                     content=ft.Row([
                         ft.Container(content=ft.Text("Panadería Quetzal POS V.1.0.", color="white", weight=ft.FontWeight.BOLD), bgcolor=self.COLOR_MARINO, padding=10, border_radius=5),
                         ft.Row([
-                            ft.OutlinedButton("Iniciar Sesión", on_click=lambda _: self.navegar("/login"), style=ft.ButtonStyle(color=self.COLOR_MARINO)),
-                            ft.ElevatedButton("Registrarse", on_click=lambda _: self.navegar("/register"), style=ft.ButtonStyle(bgcolor=self.COLOR_MARINO, color="white"))
+                            ft.Button("Iniciar Sesión", on_click=lambda _: self.navegar("/login"), style=ft.ButtonStyle(color=self.COLOR_MARINO)),
+                            ft.Button("Registrarse", on_click=lambda _: self.navegar("/register"), style=ft.ButtonStyle(bgcolor=self.COLOR_MARINO, color="white"))
                         ])
                     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     padding=20,

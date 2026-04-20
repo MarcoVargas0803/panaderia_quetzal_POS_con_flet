@@ -12,7 +12,7 @@ class RegistroView:
                 ft.Container(
                     content=ft.Row([
                         ft.Container(content=ft.Text("Registrar Usuario", color="white", weight=ft.FontWeight.BOLD), bgcolor=self.COLOR_MARINO, padding=10, border_radius=5),
-                        ft.ElevatedButton("Retroceder >", on_click=lambda _: self.navegar("/"), style=ft.ButtonStyle(bgcolor=self.COLOR_MARINO, color="white"))
+                        ft.Button("Retroceder >", on_click=lambda _: self.navegar("/"), style=ft.ButtonStyle(bgcolor=self.COLOR_MARINO, color="white"))
                     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                     padding=20,
                     border=ft.Border.only(bottom=ft.BorderSide(2, self.COLOR_MARINO))
@@ -36,7 +36,7 @@ class RegistroView:
                             ]
                         ),
                         ft.Container(height=20),
-                        ft.ElevatedButton("Registrar Usuario", width=200, height=45, style=ft.ButtonStyle(bgcolor=self.COLOR_MARINO, color="white"))
+                        ft.Button("Registrar Usuario", width=200, height=45, style=ft.ButtonStyle(bgcolor=self.COLOR_MARINO, color="white"))
                     ], 
                     alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
                     expand=True,

@@ -47,7 +47,7 @@ class ConsultaVentasView:
         return ft.Container(
             content=ft.Text(texto, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE, size=12),
             bgcolor=color_fondo,
-            padding=ft.padding.symmetric(horizontal=15, vertical=5),
+            padding=ft.Padding.symmetric(horizontal=15, vertical=5),
             border_radius=15,
             alignment = ft.Alignment(0.0,0.0),
             width=80
@@ -65,7 +65,7 @@ class ConsultaVentasView:
                 ft.DataCell(ft.Text(f"${precio:.2f}")),
                 ft.DataCell(ft.Text(f"${subtotal:.2f}")),
                 ft.DataCell(self.badge_apartado(es_apartado)),
-            ]
+            ], expand=True
         )
 
     # --- CONSTRUCCIÓN DE LA VISTA ---
@@ -97,7 +97,7 @@ class ConsultaVentasView:
                 ft.Text("Consulta de Ventas", size=32, weight=ft.FontWeight.BOLD, color=self.COLOR_MARINO),
                 self.btn_blanco("Consultar", icon=ft.Icons.REFRESH)
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-            padding=ft.padding.symmetric(horizontal=20, vertical=10),
+            padding=ft.Padding.symmetric(horizontal=20, vertical=10),
             border=ft.Border.only(bottom=ft.BorderSide(2, self.COLOR_MARINO))
         )
 
@@ -111,10 +111,10 @@ class ConsultaVentasView:
                     border_color=self.COLOR_MARINO,
                     height=40,
                     width=250,
-                    content_padding=ft.padding.symmetric(horizontal=10, vertical=0)
+                    content_padding=ft.Padding.symmetric(horizontal=10, vertical=0)
                 )
             ], alignment=ft.MainAxisAlignment.END), # Alineado a la derecha como en Figma
-            padding=ft.padding.symmetric(horizontal=20, vertical=10)
+            padding=ft.Padding.symmetric(horizontal=20, vertical=10)
         )
 
        # 4. TABLA DE DATOS (Lista para MySQL)
@@ -138,11 +138,9 @@ class ConsultaVentasView:
                         self.crear_fila(2, "2026-03-18 14:27:21", "Marco A. Vargas Valle", "Borracho", 10, 12.00, 120.00, True),
                         self.crear_fila(3, "2026-03-18 14:27:21", "Marco A. Vargas Valle", "Ojo de Pancha", 1, 10.00, 10.00, True),
                     ],
-                    heading_row_color=ft.Colors.GREY_200,
+                    heading_row_color=ft.Colors.BLACK, expand=True
                 )
-            ], scroll=ft.ScrollMode.AUTO, expand=True), # El Row envuelve la tabla para el scroll horizontal
-            padding=ft.padding.symmetric(horizontal=20),
-            expand=True
+            ], scroll=ft.ScrollMode.AUTO, expand=True, vertical_alignment= CrossAxisAlignment), # El Row envuelve la tabla para el scroll horizontal
         )
         
         # Ajuste para que la tabla esté dentro del Row con scroll
@@ -168,10 +166,10 @@ class ConsultaVentasView:
                         self.crear_fila(2, "2026-03-18 14:27:21", "Marco A. Vargas Valle", "Borracho", 10, 12.00, 120.00, True),
                         self.crear_fila(3, "2026-03-18 14:27:21", "Marco A. Vargas Valle", "Ojo de Pancha", 1, 10.00, 10.00, True),
                     ],
-                    heading_row_color=ft.Colors.GREY_200,
+                    heading_row_color=ft.Colors.GREY_200, expand=True
                 )
-            ], scroll=ft.ScrollMode.AUTO),
-            padding=ft.padding.symmetric(horizontal=20),
+            ], scroll=ft.ScrollMode.AUTO, expand=True),
+            padding=ft.Padding.symmetric(horizontal=20),
             expand=True
         )
 
