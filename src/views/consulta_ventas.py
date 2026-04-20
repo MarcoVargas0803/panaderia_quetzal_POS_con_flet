@@ -140,7 +140,7 @@ class ConsultaVentasView:
                     ],
                     heading_row_color=ft.Colors.BLACK, expand=True
                 )
-            ], scroll=ft.ScrollMode.AUTO, expand=True, vertical_alignment= CrossAxisAlignment), # El Row envuelve la tabla para el scroll horizontal
+            ], scroll=ft.ScrollMode.AUTO, expand=True), # El Row envuelve la tabla para el scroll horizontal
         )
         
         # Ajuste para que la tabla esté dentro del Row con scroll
