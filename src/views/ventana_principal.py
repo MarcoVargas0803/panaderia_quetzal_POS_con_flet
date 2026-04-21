@@ -2,6 +2,8 @@ import flet as ft
 #Fetch para la Base de Datos.
 from Backend.fetch import Fetch_Panes_Dulces, Fetch_Panes_Especiales, Fetch_Panes_Salados
 
+import datetime
+
 class PrincipalView:
     def __init__(self, navegar_callback):
         self.navegar = navegar_callback
@@ -261,47 +263,233 @@ class PrincipalView:
         categorias = ["Dulces", "Salados", "Especial"]
         self.row_categorias.controls = [self.categoria_pill(c) for c in categorias]
 
-   # --- LÓGICA DE MODAL ESTILO GITHUB ---
-    def abrir_modal(self, e):
+   #Barra de busqueda general
+    #Habria que buscar como se realiza un fetch para rellenar los datos de clientes.
+    def Barra_busqueda(self) -> ft.Column:
+        async def close_anchor(e):
+            text = f"Color {e.control.data}"
+            print(f"closing view from {text}")
+            await anchor.close_view(text)
+
+        async def open_anchor(e):
+            await anchor.open_view()
+
+        def handle_change(e):
+            print(f"handle_change e.data: {e.data}")
+
+        def handle_submit(e):
+            print(f"handle_submit e.data: {e.data}")
+
+        anchor = ft.SearchBar(
+            view_elevation=4,
+            divider_color=ft.Colors.AMBER,
+            bar_hint_text="Search colors...",
+            view_hint_text="Choose a color from the suggestions...",
+            on_change=handle_change,
+            on_submit=handle_submit,
+            on_tap=open_anchor,
+            controls=[
+                #Reemplazar para agregar el fetch a la lista de clientes
+                #Fetch debería de volver lista con solo el nombre, aunque podría verse para incluir otras datos.
+                #Checar si tiene autocompletado para poder manejarlo
+                ft.ListTile(title=ft.Text(f"Color {i}"), on_click=close_anchor, data=i)
+                for i in range(10)
+            ],
+        )
+
+        return ft.Column(
+            controls=[
+                anchor,
+            ],
+        )
+
+   # -- Logica Mensaje Señal General -- #
+    def modal_mensaje(self, mensaje: str):
+        ft.context.page.show_dialog(
+            
+            ft.AlertDialog(
+                modal=False,
+                title=ft.Text(mensaje), on_dismiss=lambda e: print("Ticket impreso..")
+        )
+        )
+
+    #Agarrador de Fecha
+    def agarrarFecha(self):
+
+        # 1. Definimos una referencia para el texto que mostrará la fecha
+        self.texto_fecha_display = ft.Text(
+            value=f"Selected date: {datetime.datetime.now().strftime('%Y-%m-%d')}",
+            size=16
+        )
+
+        # 2. Función que se ejecuta cuando el usuario elige una fecha
+        def on_date_change(e):
+            if e.control.value:
+                # Actualizamos el valor del texto con la nueva fecha
+                self.texto_fecha_display.value = f"Selected date: {e.control.value.strftime('%Y-%m-%d')}"
+                self.texto_fecha_display.update()
+                print(f"Fecha guardada: {e.control.value}") # Para tu debug
+            selected_date, set_selected_date = ft.use_state(datetime.datetime.now())
+        
+        # 3. Creamos el DatePicker
+        date_picker = ft.DatePicker(
+            first_date=datetime.datetime(2023, 10, 1),
+            last_date=datetime.datetime(2026, 12, 1),
+            on_change=on_date_change,
+        )
+
+        return ft.Column(
+            controls=[
+                ft.Button(
+                    "Pick date",
+                    icon=ft.Icons.CALENDAR_MONTH,
+                    # En Flet moderno, usamos pick_date() para abrirlo
+                    #on_click=lambda _: date_picker.pick_date(),
+                ),
+                self.texto_fecha_display,
+                date_picker # Importante: debe estar en el árbol
+            ]
+        )
+        
+   # --- Modal para imprimir ticket --- 
+    def modal_imprimir_ticket(self, e):
         # Usamos ft.context.page para mostrar el diálogo directamente
         ft.context.page.show_dialog(
             ft.AlertDialog(
                 modal=True,
-                title=ft.Text("Venta #017 08/04/2026", weight=ft.FontWeight.BOLD, color=self.COLOR_MARINO),
+                expand=True,
+                title=ft.Text("Venta (fetch)", weight=ft.FontWeight.BOLD, color=self.COLOR_MARINO),
                 content=ft.Column(
                     tight=True,
                     spacing=15,
                     controls=[
+
                         ft.Container(
                             content=ft.Column([
-                                ft.Text("Caja 1", weight=ft.FontWeight.BOLD, color="black"),
-                                ft.Text("Caja a Cargo de: Marco A. Vargas Valle", size=12, color="black"),
-                            ], spacing=2),
+                                ft.Text("Caja 1 (fetch)", weight=ft.FontWeight.BOLD, size= 18, color="black"),
+                                ft.Text("Caja a Cargo de: Marco A. Vargas Valle (fetch)", size=16, color="black"),
+                            ], spacing=2, alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                             bgcolor="#D1D9E6",
-                            padding=15,
-                            border_radius=10,
+                            padding=20,
+                            border_radius=15,
                         ),
                         ft.Text("Monto a Pagar", weight=ft.FontWeight.BOLD, color="black"),
                         ft.Container(
                             content=ft.Row([
                                 ft.Text(self.text_total.value, size=24, weight=ft.FontWeight.BOLD, color="black"),
-                                ft.Text("calculado automáticamente", size=10, color="black54"),
-                            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                                ft.Text("calculado automáticamente", size=16, color="black54"),
+                            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, spacing=50, expand=True),
                             bgcolor="#D1D9E6",
                             padding=20,
-                            border_radius=10,
+                            border_radius=15,
                         ),
                     ],
                 ),
-                actions=[
-                    ft.TextButton(
-                        "Confirmar y Cerrar", 
-                        on_click=lambda _: ft.context.page.pop_dialog()
-                    )
-                ],
-                actions_alignment=ft.MainAxisAlignment.END,
+                actions=
+                    ft.Column(
+                        controls=[
+                            #Confirmar Monto a Pagar 
+                            ft.TextButton(
+                            "Confirmar monto a pagar", 
+                            on_click=lambda _: ft.context.page.pop_dialog()
+                        ),
+                            #Imprimir ticket, aquí falta agregar la funcionalidad de mandar a imprimir
+                            ft.TextButton(
+                            "Imprimir Ticket", 
+                            on_click=lambda _: self.modal_mensaje("Ticket impreso!")
+                        )
+
+                    ]
+                ),
+                actions_alignment=ft.MainAxisAlignment.CENTER,
             )
         )
+
+    
+    
+    #Modal para "Realizar apartado"
+    def modal_realizar_apartado(self, e):
+        # Usamos ft.context.page para mostrar el diálogo directamente
+        ft.context.page.show_dialog(
+            ft.AlertDialog(
+                modal=True,
+                expand=True,
+                title=ft.Text("Realizar Apartado", weight=ft.FontWeight.BOLD, color=self.COLOR_MARINO),
+                content=ft.Column(
+                    tight=True,
+                    spacing=15,
+                    controls=[
+                        ft.Container(
+                            content=ft.Row([
+                                #Va a la ventana "Registrar Cliente"
+                                ft.TextButton("¿No está registrado? Registrar Cliente."),
+                            ], alignment=ft.MainAxisAlignment.START, spacing=50, expand=True),
+                        ),
+
+                        self.Barra_busqueda(),
+
+                        ft.Container(
+                            content=ft.Row([
+                                ft.Text("monto total del apartado", size=16, color="black54"),
+                                ft.Text(self.text_total.value, size=24, weight=ft.FontWeight.BOLD, color="black"),
+                            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, spacing=50, expand=True),
+                            bgcolor="#D1D9E6",
+                            padding=20,
+                            border_radius=15,
+                        ),
+
+                        ft.Container(
+                            content=ft.Row([
+                                ft.Text("pago minimo para apartar(20%)", size=16, color="black54"),
+                                #Realizar otra variable que calcule el 20% del valor total.
+                                ft.Text(self.text_total.value, size=24, weight=ft.FontWeight.BOLD, color="black"),
+                            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, spacing=50, expand=True),
+                            bgcolor="#D1D9E6",
+                            padding=20,
+                            border_radius=15,
+                        ),
+
+                        #Fecha
+                        self.agarrarFecha(),
+                        #Anticipo
+                        ft.TextField(
+                            label="Material",
+                        ),
+
+                         ft.Container(
+                            content=ft.Row([
+                                ft.Text("Monto restante para finiquitar apartado", size=16, color="black54"),
+                                #Realizar otra variable que calcule el restante a pagar de #self.text_total.value).
+                                ft.Text(self.text_total.value, size=24, weight=ft.FontWeight.BOLD, color="black"),
+                            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, spacing=50, expand=True),
+                            bgcolor="#D1D9E6",
+                            padding=20,
+                            border_radius=15,
+                        ),
+
+                    ],
+                ),
+                actions=
+                    ft.Column(
+                        controls=[
+                            #Confirmar Monto a Pagar 
+                            ft.TextButton(
+                            "Confirmar Apartado", 
+                            #Realizar inserción de apartado.
+                            on_click=lambda _: ft.context.page.pop_dialog()
+                        ),
+                            #Imprimir ticket, aquí falta agregar la funcionalidad de mandar a imprimir
+                            ft.TextButton(
+                            "Imprimir Ticket", 
+                            on_click=lambda _: self.modal_mensaje("Ticket impreso!")
+                        )
+
+                    ]
+                ),
+                actions_alignment=ft.MainAxisAlignment.CENTER,
+            )
+        )
+
 
     # --- CONSTRUCCIÓN DE LA VISTA ---
     def build(self):
@@ -343,13 +531,13 @@ class PrincipalView:
                 self.btn_oscuro("Efectivo", expand=1),
                 self.btn_oscuro("Tarjeta", expand=1),
                 self.btn_oscuro("Transferencia", expand=1),
-                self.btn_blanco("Crear como apartado", expand=1, icon=ft.Icons.STAR_BORDER),
+                self.btn_blanco("Crear como apartado", expand=1, icon=ft.Icons.STAR_BORDER, on_click=self.modal_realizar_apartado),
                 # Botón que dispara el modal
                 self.btn_blanco(
                     "Imprimir Ticket", 
                     expand=1, 
                     icon=ft.Icons.PRINT, 
-                    on_click=self.abrir_modal
+                    on_click=self.modal_imprimir_ticket
                 ),
                 self.btn_blanco("Finalizar Venta", expand=1, icon=ft.Icons.CHECK)
             ], spacing=10),
