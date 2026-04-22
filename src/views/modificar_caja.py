@@ -84,60 +84,6 @@ class PrincipalView:
             expand=expand,
             on_click=on_click
         )
-
-    def tarjetas_productos(self, lista_datos, url_imagen="../assets/Concha.png"):
-        #Lista para guardar tarjetas
-        lista_tarjetas_fetch = []
-        for pan in lista_datos:
-            tarjeta_pan = ft.Container(
-                content=ft.Column([
-                    # Placeholder de imagen
-                    ft.Image(src=url_imagen, width=150, height=100, fit=1, border_radius=ft.BorderRadius.only(top_left=10, top_right=10)),
-                    ft.Container(
-                        content=ft.Column([
-                            ft.Text(pan["nombre"], weight=ft.FontWeight.BOLD, size=16, color=self.COLOR_MARINO),
-                            ft.Text(f"${pan["precio"]:.2f}", size=14, color=self.COLOR_MARINO)
-                        ], spacing=2),
-                       
-                        padding=10
-                    )
-                ], spacing=0),
-                bgcolor=self.COLOR_FONDO_CARRITO,
-                border_radius=10,
-                width=150,
-                #Función para agregar al carrito.
-                on_click=lambda e, p=pan: self.agregar_al_carrito(p),
-            )
-        # 4. Agregamos esta tarjeta ya diseñada a nuestra lista de controles
-            lista_tarjetas_fetch.append(tarjeta_pan)
-        
-        return lista_tarjetas_fetch
-    
-    # Operaciones CRUD del carrito.
-    def agregar_al_carrito(self, pan):
-        nombre = pan["nombre"]
-        # Si ya existe, subimos cantidad. Si no, lo creamos.
-        if nombre in self.carrito:
-            self.carrito[nombre]["cantidad"] += 1
-        else:
-            self.carrito[nombre] = {"precio": pan["precio"], "cantidad": 1}
-        
-        self.actualizar_vista_carrito()
-
-    def modificar_cantidad(self, nombre, delta):
-        if nombre in self.carrito:
-            self.carrito[nombre]["cantidad"] += delta
-            # Si llega a cero, lo borramos
-            if self.carrito[nombre]["cantidad"] <= 0:
-                self.carrito.pop(nombre)
-        
-        self.actualizar_vista_carrito()
-
-    def borrar_del_carrito(self, nombre):
-        if nombre in self.carrito:
-            self.carrito.pop(nombre)
-        self.actualizar_vista_carrito()
-
    
     #Container secundario del texto y el monto.
     def container_monto(self, texto: str, variable: ft.Text):
@@ -161,72 +107,6 @@ class PrincipalView:
 
         )
     
-
-    def item_carrito(self, nombre, datos):
-        return ft.Container(
-            content=ft.Row([
-
-                #Imagen 
-                ft.Column([
-                    ft.Image(src="../assets/Concha.png", fit=1, border_radius=ft.BorderRadius.only(top_left=10, top_right=10)),
-                ], expand=True, spacing=0),
-                
-                
-                ft.Column([
-                    ft.Text(nombre, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE, size=14),
-                    ft.Text(f"${datos['precio']:.2f}", color=ft.Colors.WHITE70, size=12)
-                ], expand=True, spacing=0),
-                
-                # Controles de cantidad
-                ft.Row([
-                    ft.IconButton(
-                        icon=ft.Icons.REMOVE_CIRCLE_OUTLINE,
-                        icon_color=ft.Colors.WHITE_70,
-                        icon_size=20,
-                        on_click=lambda _: self.modificar_cantidad(nombre, -1)
-                    ),
-                    ft.Text(str(datos["cantidad"]), weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
-                    ft.IconButton(
-                        icon=ft.Icons.ADD_CIRCLE_OUTLINE,
-                        icon_color=ft.Colors.WHITE_70,
-                        icon_size=20,
-                        on_click=lambda _: self.modificar_cantidad(nombre, 1)
-                    ),
-                    ft.IconButton(
-                        icon=ft.Icons.DELETE_OUTLINE,
-                        icon_color=ft.Colors.RED_300,
-                        icon_size=20,
-                        on_click=lambda _: self.borrar_del_carrito(nombre)
-                    ),
-                ], spacing=0)
-            ]),
-            bgcolor=self.COLOR_ITEM_CARRITO,
-            padding=10,
-            border_radius=10,
-        )
-    
-    #Actualizar la lista del carrito
-    def actualizar_vista_carrito(self):
-        # 1. Limpiar lista visual
-        self.columna_items_carrito.controls.clear()
-        
-        total = 0
-        
-        # 2. Re-dibujar items desde el diccionario 'self.carrito'
-        for nombre, datos in self.carrito.items():
-            total += datos["precio"] * datos["cantidad"]
-            self.columna_items_carrito.controls.append(self.item_carrito(nombre, datos))
-        
-        # 3. Actualizar los textos de Total en la interfaz
-        # (Para esto, necesitas que los textos de subtotal/total también sean self.text_total)
-        self.text_subtotal.value = f"${total:.2f}"
-        self.text_total.value = f"${total:.2f}"
-        
-        # 4. Refrescar Flet
-        self.columna_items_carrito.update()
-        self.text_subtotal.update()
-        self.text_total.update()
-
     
     
     # Botones para seleccionar tipo de pago
@@ -619,7 +499,7 @@ class PrincipalView:
         )
 
         # 2. SECCIÓN DE ACCIONES DE VENTA
-        acciones_venta = ft.Container(
+        acciones_caja = ft.Container(
             content=ft.Row([
                 ft.Text("Venta", size=28, weight=ft.FontWeight.BOLD, color=self.COLOR_MARINO, expand=True),
                 self.btn_oscuro("Consultar Ventas",on_click=lambda _: self.navegar("/consulta_ventas")),
@@ -636,7 +516,7 @@ class PrincipalView:
 
         # Inicializamos los datos por primera vez
         self.renderizar_tipo_pagos()
-        metodos_pago = ft.Container(
+        opciones_caja = ft.Container(
             content=ft.Row([
                 #self.btn_oscuro("Efectivo", expand=1),
                 #self.btn_oscuro("Tarjeta", expand=1),
@@ -698,13 +578,14 @@ class PrincipalView:
 
         # ENSAMBLE FINAL
         return ft.View(
-            route="/ventana_principal",
+            route="/caja",
             bgcolor=ft.Colors.WHITE,
             padding=0,
             controls=[
                 header,
-                acciones_venta,
-                metodos_pago,
+                
+                acciones_caja,
+                opciones_caja,
                 # Contenedor principal que divide pantalla en Izquierda y Derecha
                 ft.Container(
                     content=ft.Row([
