@@ -4,25 +4,16 @@ from Backend.fetch import Fetch_Panes_Dulces, Fetch_Panes_Especiales, Fetch_Pane
 
 import datetime
 
-class PrincipalView:
+class ModificarCajaView:
     def __init__(self, navegar_callback):
         self.navegar = navegar_callback
         
+
         # Paleta de Colores
         self.COLOR_MARINO = "#2C3545"
         self.COLOR_GRIS_CLARO = "#9BA4B5"
         self.COLOR_FONDO_CARRITO = "#E0E5EC"
         self.COLOR_ITEM_CARRITO = "#768296"
-
-        #Listas vacias para los fetch: 4. PANEL IZQUIERDO (Categorías y Productos)
-        self.Lista_categorias = []
-        self.Lista_tarjetas = []
-        self.Lista_items_carrito = []
-
-        #Lista vacia para los fetch: 5. PANEL DERECHO (Detalle de Venta)
-        self.Lista_panes_dulces = []
-        self.Lista_panes_salados = []
-        self.Lista_panes_especiales = []
 
         # ESTADO: ¿Qué categoría está activa?
         self.categoria_actual = "Salados" 
@@ -90,7 +81,6 @@ class PrincipalView:
         return ft.Container(
             #Configuración
             padding=20,
-            bgcolor=self.COLOR_GRIS_CLARO,
             border_radius=15,
 
             content=
@@ -106,100 +96,6 @@ class PrincipalView:
                 ])
 
         )
-    
-    
-    
-    # Botones para seleccionar tipo de pago
-    def tipo_pago_pill(self, texto):
-        # ¿Este botón es el seleccionado?
-        es_activo = self.pago_actual == texto
-        
-        return ft.Container(
-            content=ft.Text(
-                texto, 
-                weight=ft.FontWeight.BOLD, 
-                color=ft.Colors.BLACK if es_activo else ft.Colors.WHITE
-            ),
-            bgcolor=ft.Colors.GREEN_200 if es_activo else self.COLOR_MARINO,
-            border_radius=5,
-            padding=ft.Padding.symmetric(horizontal=30, vertical=8),
-            expand=1,
-            #Volvermos a llamar la función click_tipoPago
-            on_click=self.click_tipo_pago,
-            data=texto # Guardamos el nombre aquí para saber cuál se presionó
-        )
-     # -- Función para click a "Efectivo", "Transferencia", "Tarjeta"
-    def click_tipo_pago(self, e):
-            # 1. Cambiamos la categoría actual
-            self.pago_actual = e.control.data
-                
-            # 2. Elegimos qué función de Fetch usar
-            #None provisional: Aqui debe de haber un llamado para guardar la variable para el procedimiento de venta.
-            if self.pago_actual== "Efectivo":
-                    tipo_pago_seleccionado = None
-            elif self.pago_actual == "Tarjeta":
-                    tipo_pago_seleccionado = None
-            elif self.pago_actual == "Transferencia":
-                    tipo_pago_seleccionado = None
-
-        #FUTURO: "tipo_pago_seleccionado" estará disponible para ser insertado para uno de los procedimientos almacenados para venta.
-
-        # 4. Actualizamos visualmente los botones de categoría
-            self.renderizar_tipo_pagos()
-        # 5. Refrescamos los cambios en la pantalla
-            self.row_tipo_pagos.update()
-
-    def renderizar_tipo_pagos(self):
-        # Esta función dibuja o redibuja los botones para que cambien de color
-        tipos_pagos = ["Efectivo", "Tarjeta", "Transferencia"]
-        self.row_tipo_pagos.controls = [self.tipo_pago_pill(pago) for pago in tipos_pagos]
-
-    
-    #Botón categoria con responsividad de si es seleccionada
-    def categoria_pill(self, texto):
-        # ¿Este botón es el seleccionado?
-        es_activo = self.categoria_actual == texto
-        
-        return ft.Container(
-            content=ft.Text(
-                texto, 
-                weight=ft.FontWeight.BOLD, 
-                color=ft.Colors.WHITE if es_activo else self.COLOR_MARINO
-            ),
-            bgcolor=self.COLOR_MARINO if es_activo else self.COLOR_GRIS_CLARO,
-            padding=ft.Padding.symmetric(horizontal=20, vertical=10),
-            border_radius=15,
-            on_click=self.click_categoria,
-            data=texto # Guardamos el nombre aquí para saber cuál se presionó
-        )
-
-    # -- Función para click a cierta categoría
-    def click_categoria(self, e):
-        # 1. Cambiamos la categoría actual
-        self.categoria_actual = e.control.data
-            
-        # 2. Elegimos qué función de Fetch usar
-        if self.categoria_actual == "Salados":
-                datos = Fetch_Panes_Salados()
-        elif self.categoria_actual == "Dulces":
-                datos = Fetch_Panes_Dulces()
-        else:
-                datos = Fetch_Panes_Especiales()
-            
-        # 3. Actualizamos el Grid (el asterisco desempaqueta la lista de tarjetas)
-        self.grid_productos.controls = [*self.tarjetas_productos(datos)]
-            
-        # 4. Actualizamos visualmente los botones de categoría
-        self.renderizar_categorias()
-            
-        # 5. Refrescamos los cambios en la pantalla
-        self.grid_productos.update()
-        self.row_categorias.update()
-
-    def renderizar_categorias(self):
-        # Esta función dibuja o redibuja los botones para que cambien de color
-        categorias = ["Dulces", "Salados", "Especial"]
-        self.row_categorias.controls = [self.categoria_pill(c) for c in categorias]
 
    #Barra de busqueda general
     #Habria que buscar como se realiza un fetch para rellenar los datos de clientes.
@@ -287,6 +183,13 @@ class PrincipalView:
                 date_picker # Importante: debe estar en el árbol
             ]
         )
+    def detalle_saldo(self, mensaje: str, variable = None):
+        return ft.Container(
+            content=ft.Column([
+                ft.Text(mensaje, weight=ft.FontWeight.BOLD, size= 18, color="black"),
+                ft.Text(self.text_subtotal.value, size=16, color="black"),
+            ]), bgcolor=self.COLOR_GRIS_CLARO, padding=10, border_radius=15
+        )
         
    # --- Modal para imprimir ticket --- 
     def modal_imprimir_ticket(self, e):
@@ -298,19 +201,32 @@ class PrincipalView:
                 title=ft.Text("Venta (fetch)", weight=ft.FontWeight.BOLD, color=self.COLOR_MARINO),
                 content=ft.Column(
                     tight=True,
-                    spacing=15,
+                    spacing=5,
                     controls=[
 
                         ft.Container(
                             content=ft.Column([
-                                ft.Text("Caja 1 (fetch)", weight=ft.FontWeight.BOLD, size= 18, color="black"),
+                                ft.Text("Caja 1", weight=ft.FontWeight.BOLD, size= 18, color="black"),
                                 ft.Text("Caja a Cargo de: Marco A. Vargas Valle (fetch)", size=16, color="black"),
-                            ], spacing=2, alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                            ], spacing=2, alignment=ft.MainAxisAlignment.SPACE_BETWEEN, expand=True),
                             bgcolor="#D1D9E6",
                             padding=20,
                             border_radius=15,
                         ),
-                        ft.Text("Monto a Pagar", weight=ft.FontWeight.BOLD, color="black"),
+
+                        ft.Container(
+                            content=ft.Row([
+                                self.detalle_saldo("Saldo de Apertura"),
+                                self.detalle_saldo("Saldo de Cierre"),
+                                self.detalle_saldo("Fecha de Apertura"),
+                                self.detalle_saldo("Monto Total de Caja"),
+                            ], spacing=10, alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                            padding=20,
+                            border_radius=15,
+
+                        ),
+
+                        ft.Text("Faltante", weight=ft.FontWeight.BOLD, color="black"),
                         ft.Container(
                             content=ft.Row([
                                 ft.Text(self.text_total.value, size=24, weight=ft.FontWeight.BOLD, color="black"),
@@ -325,17 +241,11 @@ class PrincipalView:
                 actions=
                     ft.Column(
                         controls=[
-                            #Confirmar Monto a Pagar 
-                            ft.TextButton(
-                            "Confirmar monto a pagar", 
-                            on_click=lambda _: ft.context.page.pop_dialog()
-                        ),
+                            #Provisional
+                            ft.Button(content="Confirmar Corte de Día"+" - "+self.text_total.value,expand=True, icon=ft.Icons.MONEY, on_click= lambda _: ft.context.page.pop_dialog()), 
                             #Imprimir ticket, aquí falta agregar la funcionalidad de mandar a imprimir
-                            ft.TextButton(
-                            "Imprimir Ticket", 
-                            on_click=lambda _: self.modal_mensaje("Ticket impreso!")
-                        )
-
+                            ft.Button(content="Imprimir Ticket", icon=ft.Icons.PRINT ,on_click=lambda _: self.modal_mensaje("Ticket impreso!"),expand=True)
+                           
                     ]
                 ),
                 actions_alignment=ft.MainAxisAlignment.CENTER,
@@ -475,6 +385,17 @@ class PrincipalView:
             )
         )
 
+    def text_box_container(self, texto):
+                return ft.Container(
+                content=ft.Column([
+                    ft.TextField(label=texto),
+                    self.btn_oscuro("Confirmar",expand=True)
+                ]),
+                border=ft.Border.all(width=2,color=self.COLOR_MARINO),
+                border_radius=5,
+                padding=20,
+            )
+
 
     # --- CONSTRUCCIÓN DE LA VISTA ---
     def build(self):
@@ -487,12 +408,18 @@ class PrincipalView:
         header = ft.Container(
             content=ft.Row([
                 ft.Container(content=ft.Text("Ventana Principal", color="white", weight=ft.FontWeight.BOLD), bgcolor=self.COLOR_MARINO, padding=10, border_radius=5),
+                
                 ft.Row([
-                    ft.TextButton("Venta", icon=ft.Icons.SHOPPING_CART_SHARP, style=ft.ButtonStyle(color=self.COLOR_MARINO)),
-                    ft.TextButton("Producción", icon=ft.Icons.BAKERY_DINING,on_click=lambda _: self.navegar("/ventana_principal_produccion") , style=ft.ButtonStyle(color=ft.Colors.GREY)),
-                    ft.TextButton("Consultas", icon=ft.Icons.SEARCH, on_click=lambda _: self.navegar("/ventana_principal_consultas"), style=ft.ButtonStyle(color=ft.Colors.GREY)),
+                    ft.TextButton("Venta", icon=ft.Icons.SHOPPING_CART_SHARP, style=ft.ButtonStyle(color=self.COLOR_MARINO), disabled=False),
+                    ft.TextButton("Producción", icon=ft.Icons.BAKERY_DINING , style=ft.ButtonStyle(color=ft.Colors.GREY),disabled=False),
+                    ft.TextButton("Consultas", icon=ft.Icons.SEARCH, style=ft.ButtonStyle(color=ft.Colors.GREY),disabled=False),
                 ], spacing=20),
+
+                ft.Row([
+                    self.btn_oscuro("Volver a Venta", on_click=lambda _: self.navegar("/ventana_principal"),icon=ft.Icons.ARROW_BACK_IOS),
                 self.btn_blanco("Cerrar Sesión", on_click=lambda _: self.navegar("/"))
+                ],alignment= ft.MainAxisAlignment.END),
+                
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
             padding=15,
             border=ft.Border.only(bottom=ft.BorderSide(2, self.COLOR_MARINO))
@@ -501,12 +428,22 @@ class PrincipalView:
         # 2. SECCIÓN DE ACCIONES DE VENTA
         acciones_caja = ft.Container(
             content=ft.Row([
-                ft.Text("Venta", size=28, weight=ft.FontWeight.BOLD, color=self.COLOR_MARINO, expand=True),
-                self.btn_oscuro("Consultar Ventas",on_click=lambda _: self.navegar("/consulta_ventas")),
-                self.btn_oscuro("Pagos"),
-                self.btn_blanco("Modificar Caja"),
-                self.btn_oscuro("Realizar Corte")
-            ]),
+                ft.Text("Caja", size=28, weight=ft.FontWeight.BOLD, color=self.COLOR_MARINO, expand=True),
+                
+                ft.Row([
+                    self.Barra_busqueda(),
+                    # Botón que dispara el modal
+                    self.btn_blanco("Imprimir Ticket",  expand=True, icon=ft.Icons.PRINT, on_click=self.modal_imprimir_ticket )
+                ],alignment= ft.MainAxisAlignment.END),
+
+                ft.Row([
+                    #El botón de modificar caja es un botón que se puede desactivar o activar, con el fin de permitir la modificación o no.
+                    self.btn_oscuro("Modificar Caja"),
+                    self.btn_oscuro("Realizar Corte",on_click=self.modal_imprimir_ticket)
+                ],alignment= ft.MainAxisAlignment.END),
+
+            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+            border=ft.Border.only(bottom=ft.BorderSide(2, self.COLOR_MARINO)),
             padding=ft.Padding.symmetric(horizontal=15, vertical=10)
         )
 
@@ -514,64 +451,45 @@ class PrincipalView:
 
         # 3. MÉTODOS DE PAGO Y BOTONES FINALES}
 
-        # Inicializamos los datos por primera vez
-        self.renderizar_tipo_pagos()
-        opciones_caja = ft.Container(
-            content=ft.Row([
-                #self.btn_oscuro("Efectivo", expand=1),
-                #self.btn_oscuro("Tarjeta", expand=1),
-                #self.btn_oscuro("Transferencia", expand=1),
-
-                self.row_tipo_pagos,
-                self.btn_blanco("Crear como apartado", expand=1, icon=ft.Icons.STAR_BORDER, on_click=self.modal_realizar_apartado),
-                # Botón que dispara el modal
-                self.btn_blanco(
-                    "Imprimir Ticket", 
-                    expand=1, 
-                    icon=ft.Icons.PRINT, 
-                    on_click=self.modal_imprimir_ticket
-                ),
-                #Provisional, cambiar "modal mensaje" por función apropiada para eliminar lo que haya seleccionado y guardar en BD.
-                self.btn_blanco("Finalizar Venta", expand=1, icon=ft.Icons.CHECK,on_click=lambda _:self.modal_mensaje("Venta Finalizada!"))
-            ], spacing=10),
-            padding=ft.Padding.symmetric(horizontal=15, vertical=5)
-        )
-
         # 4. PANEL IZQUIERDO (Categorías y Productos)
-        # Inicializamos los datos por primera vez
-        self.renderizar_categorias()
-        self.grid_productos.controls = [*self.tarjetas_productos(Fetch_Panes_Salados())]
 
 
-        panel_izquierdo = ft.Container(
-            content=ft.Column([
-                # Categorías (referencia a la fila de categorias)
-                self.row_categorias,
-                ft.Divider(color=self.COLOR_MARINO),
-                # Grid de Panes (referencia al grid de productos)
-               self.grid_productos
-            ]),
-            expand=7, # Ocupa el 70% del ancho
-            padding=15
+        text_box_saldos = ft.Container(
+            #Contenedor principal (Fila)
+            content=ft.Row([
+
+                self.text_box_container("Saldo de Apertura"),
+                self.text_box_container("Saldo de Cierre"),
+                self.text_box_container("Fecha de Apertura"),
+                self.text_box_container("Fecha de Cierre"),
+            ],alignment=ft.MainAxisAlignment.CENTER),
+            padding=15,
         )
 
         # 5. PANEL DERECHO (Detalle de Venta)
-        panel_derecho = ft.Container(
+        detalle_caja = ft.Container(
             content=ft.Column([
-                # Lista de items en el carrito
-                ft.Container(content=self.columna_items_carrito, expand=True),
-                # Resumen (Subtotal, Impuestos, etc)
-                
+                ft.Text("Detalle de Caja", size=28, weight=ft.FontWeight.BOLD, color=self.COLOR_MARINO),
 
-                self.container_monto("Subtotal", self.text_subtotal),
-                # Resumen (Subtotal, Impuestos, etc)
-                self.container_monto("Total", self.text_total),
-            
-    
+                ft.Container(
+                    content=ft.Column([
+                        #De manera provisional estan self.text_subtotal y self.text_total.
+                        self.container_monto("Saldo de Apertura Confirmado", self.text_subtotal),
+                        self.container_monto("Saldo de Cierre Confirmado", self.text_total),
+                        self.container_monto("Ingresos Totales del sistema", self.text_total),
+                        self.container_monto("Monto Total de la Caja (Saldo de Apertura + Ingresos Totales)", self.text_total),
+                    ]), bgcolor=self.COLOR_GRIS_CLARO, border_radius=15
+                ),
+
+                ft.Container(
+                    content=ft.Column([
+                        #De manera provisional esta self.text_total.
+                       self.container_monto("Faltante de Caja", self.text_total)
+
+                    ]), bgcolor=self.COLOR_GRIS_CLARO, border_radius=15
+                ),
             ]),
-            expand=3, # Ocupa el 30% del ancho
-            padding=30,
-            border=ft.Border.only(left=ft.BorderSide(2, ft.Colors.BLACK)),
+            padding=15,
             border_radius=15,
            
         )
@@ -583,16 +501,10 @@ class PrincipalView:
             padding=0,
             controls=[
                 header,
-                
                 acciones_caja,
-                opciones_caja,
-                # Contenedor principal que divide pantalla en Izquierda y Derecha
-                ft.Container(
-                    content=ft.Row([
-                        panel_izquierdo,
-                        panel_derecho
-                    ], vertical_alignment=ft.CrossAxisAlignment.START, expand=True),
-                    expand=True
-                )
+                text_box_saldos,
+                detalle_caja
+                    
+               
             ]
         )

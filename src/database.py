@@ -1,3 +1,5 @@
+#Archivo para recuperar los fetch de la BD. 
+
 import os
 import mysql.connector
 from mysql.connector import Error

@@ -1,13 +1,17 @@
 import flet as ft
 #Fetch para la Base de Datos.
-from Backend.fetch import Fetch_Panes_Dulces, Fetch_Panes_Especiales, Fetch_Panes_Salados
-
+from Backend.fetch import Fetch_Panes_Dulces, Fetch_Panes_Especiales, Fetch_Panes_Salados, fetch_clientes, registrar_cliente
+from Backend.fetch import crear_apartado_detallado_db, registrar_venta_directa_db
+from utils.Toasts import NotificationHelper
+from Logic.logic import ApartadoLogic
+from Logic.logic import VentaLogic
+from Backend.fetch import crear_apartado_db
 import datetime
 
 class PrincipalView:
     def __init__(self, navegar_callback):
         self.navegar = navegar_callback
-        
+
         # Paleta de Colores
         self.COLOR_MARINO = "#2C3545"
         self.COLOR_GRIS_CLARO = "#9BA4B5"
@@ -33,6 +37,8 @@ class PrincipalView:
         # ESTADO: ¿Qué tipo de pago está activo?
         self.pago_actual = "Efectivo"
 
+        self.cliente_apartado_id = None
+
         #ESTADO del carrito
         self.carrito = {}
         
@@ -55,6 +61,7 @@ class PrincipalView:
         # REFERENCIAS del los items del carrito
         self.columna_items_carrito = ft.Column(scroll=ft.ScrollMode.AUTO, spacing=5)
 
+        self.fecha_entrega_apartado = datetime.datetime.now() # Estado inicial
 
 
 
@@ -95,7 +102,7 @@ class PrincipalView:
                     ft.Image(src=url_imagen, width=150, height=100, fit=1, border_radius=ft.BorderRadius.only(top_left=10, top_right=10)),
                     ft.Container(
                         content=ft.Column([
-                            ft.Text(pan["nombre"], weight=ft.FontWeight.BOLD, size=16, color=self.COLOR_MARINO),
+                            ft.Text(pan["nombre"], weight=ft.FontWeight.BOLD, size=16, color=self.COLOR_GRIS_CLARO),
                             ft.Text(f"${pan["precio"]:.2f}", size=14, color=self.COLOR_MARINO)
                         ], spacing=2),
                        
@@ -120,7 +127,7 @@ class PrincipalView:
         if nombre in self.carrito:
             self.carrito[nombre]["cantidad"] += 1
         else:
-            self.carrito[nombre] = {"precio": pan["precio"], "cantidad": 1}
+            self.carrito[nombre] = {"id": pan["id"], "precio": pan["precio"], "cantidad": 1}
         
         self.actualizar_vista_carrito()
 
@@ -324,42 +331,62 @@ class PrincipalView:
    #Barra de busqueda general
     #Habria que buscar como se realiza un fetch para rellenar los datos de clientes.
     def Barra_busqueda(self) -> ft.Column:
+        # 1. Cargamos todos los clientes una sola vez al inicio del componente
+        self.todos_los_clientes = fetch_clientes() 
+
         async def close_anchor(e):
-            text = f"Color {e.control.data}"
-            print(f"closing view from {text}")
-            await anchor.close_view(text)
+            cliente_seleccionado = e.control.data
+            self.cliente_apartado_id = cliente_seleccionado['clientes_id']
+            # Al seleccionar, el anchor se cierra con el nombre elegido
+            await anchor.close_view(cliente_seleccionado['nombre'])
 
         async def open_anchor(e):
             await anchor.open_view()
 
+        # --- 2. Lógica de Autocompletado (Filtrado) ---
         def handle_change(e):
-            print(f"handle_change e.data: {e.data}")
+            # Obtenemos lo que el usuario está escribiendo (en minúsculas para comparar mejor)
+            texto_busqueda = e.data.lower()
+            
+            # Filtramos la lista original basándonos en el nombre
+            clientes_filtrados = [
+                c for c in self.todos_los_clientes 
+                if texto_busqueda in c["nombre"].lower()
+            ]
 
-        def handle_submit(e):
-            print(f"handle_submit e.data: {e.data}")
+            # 3. Actualizamos los controles del SearchBar dinámicamente
+            anchor.controls = [
+                ft.ListTile(
+                    title=ft.Text(cliente["nombre"]),
+                    subtitle=ft.Text(f"Tel: {cliente['telefono']}"),
+                    on_click=close_anchor,
+                    data=cliente
+                ) for cliente in clientes_filtrados
+            ]
+            
+            # Refrescamos el componente para mostrar los nuevos resultados
+            anchor.update()
 
+        # --- 4. Definición del Componente ---
         anchor = ft.SearchBar(
             view_elevation=4,
             divider_color=ft.Colors.AMBER,
-            bar_hint_text="Search colors...",
-            view_hint_text="Choose a color from the suggestions...",
-            on_change=handle_change,
-            on_submit=handle_submit,
+            bar_hint_text="Buscar cliente...",
+            view_hint_text="Sugerencias encontradas...",
             on_tap=open_anchor,
+            on_change=handle_change, # <--- AQUÍ ACTIVAMOS EL AUTOCOMPLETADO
             controls=[
-                #Reemplazar para agregar el fetch a la lista de clientes
-                #Fetch debería de volver lista con solo el nombre, aunque podría verse para incluir otras datos.
-                #Checar si tiene autocompletado para poder manejarlo
-                ft.ListTile(title=ft.Text(f"Color {i}"), on_click=close_anchor, data=i)
-                for i in range(10)
+                # Iniciamos con todos los clientes visibles
+                ft.ListTile(
+                    title=ft.Text(cliente["nombre"]),
+                    subtitle=ft.Text(f"Tel: {cliente['telefono']}"),
+                    on_click=close_anchor,
+                    data=cliente
+                ) for cliente in self.todos_los_clientes
             ],
         )
 
-        return ft.Column(
-            controls=[
-                anchor,
-            ],
-        )
+        return ft.Column(controls=[anchor])
 
    # -- Logica Mensaje Señal General -- #
     def modal_mensaje(self, mensaje: str):
@@ -373,43 +400,180 @@ class PrincipalView:
 
     #Agarrador de Fecha
     def agarrarFecha(self):
-
-        # 1. Definimos una referencia para el texto que mostrará la fecha
+        # 1. El visualizador de la fecha (Referencia de clase)
         self.texto_fecha_display = ft.Text(
-            value=f"Selected date: {datetime.datetime.now().strftime('%Y-%m-%d')}",
-            size=16
+            value=self.fecha_entrega_apartado.strftime("%Y-%m-%d"),
+            size=16,
+            weight=ft.FontWeight.BOLD,
+            color=self.COLOR_MARINO
         )
 
-        # 2. Función que se ejecuta cuando el usuario elige una fecha
-        def on_date_change(e):
+        # 2. El Handler: Qué pasa cuando el usuario elige la fecha
+        def handle_cambio_fecha(e):
             if e.control.value:
-                # Actualizamos el valor del texto con la nueva fecha
-                self.texto_fecha_display.value = f"Selected date: {e.control.value.strftime('%Y-%m-%d')}"
+                # Actualizamos el estado de la clase
+                self.fecha_entrega_apartado = e.control.value
+                # Actualizamos la interfaz
+                self.texto_fecha_display.value = self.fecha_entrega_apartado.strftime("%Y-%m-%d")
                 self.texto_fecha_display.update()
-                print(f"Fecha guardada: {e.control.value}") # Para tu debug
-        
-        # 3. Creamos el DatePicker
-        date_picker = ft.DatePicker(
-            first_date=datetime.datetime(2023, 10, 1),
-            last_date=datetime.datetime(2026, 12, 1),
-            on_change=on_date_change,
+                print(f"Fecha de entrega seleccionada: {self.fecha_entrega_apartado}")
+
+        # 3. El componente DatePicker (Invisible)
+        self.selector_fecha = ft.DatePicker(
+            first_date=datetime.datetime.now(), # No pueden apartar hacia el pasado
+            last_date=datetime.datetime(2026, 12, 31),
+            on_change=handle_cambio_fecha,
         )
 
+        # Función interna para abrirlo manualmente
+        def abrir_calendario(e):
+            self.selector_fecha.open = True # <--- LA ALTERNATIVA
+            self.selector_fecha.update()
+
+        # 4. El Layout (Lo que el cajero ve)
         return ft.Column(
+            spacing=5,
             controls=[
-                ft.Button(
-                    "Pick date",
-                    icon=ft.Icons.CALENDAR_MONTH,
-                    # En Flet moderno, usamos pick_date() para abrirlo
-                    on_click=lambda _: date_picker.pick_date(),
-                ),
-                self.texto_fecha_display,
-                date_picker # Importante: debe estar en el árbol
+                ft.Text("Fecha de Entrega:", size=12, color="black54"),
+                ft.Row([
+                    ft.IconButton(
+                        icon=ft.Icons.CALENDAR_MONTH,
+                        icon_color=self.COLOR_MARINO,
+                        on_click=abrir_calendario, # Abre el calendario
+                        tooltip="Seleccionar fecha"
+                    ),
+                    self.texto_fecha_display
+                ]),
+                self.selector_fecha # DEBE estar en el árbol de controles
             ]
+    )
+
+    def _notificar(self,page, mensaje: str, es_error: bool):
+        """Atajo interno para disparar Toasts de forma asíncrona."""
+        page.run_task(
+            NotificationHelper.mostrar_toast, 
+            page, 
+            mensaje, 
+            es_error # es_error
         )
+    
+    def _handle_imprimir_ticket(self, e):
+
+        # 1. Ejecutamos la notificación (asíncrona)
+        # Pasamos la función, luego los argumentos posicionales
+        e.page.run_task(
+            NotificationHelper.mostrar_toast, 
+            e.page, 
+            "¡Ticket impreso y venta registrada!", 
+            False # es_error
+        )
+
+    def _handle_confirmar_apartado(self, e):
+        # 1. Validación de seguridad "Senior"
+        if self.cliente_apartado_id is None:
+            self._notificar(e.page, "Error: Debes seleccionar un cliente en la barra de búsqueda", True)
+            return # Detenemos la ejecución aquí
+
+        try:
+            # 1. Preparamos el detalle del carrito para el JSON de MySQL
+            # Necesitas asegurarte de que cada pan en tu self.carrito tenga su 'id' real
+            lista_productos_json = []
+            for nombre, info in self.carrito.items():
+                lista_productos_json.append({
+                    "productos_id": info["id"], # Usa el ID real del pan
+                    "cantidad": info["cantidad"]
+                })
+
+            # 2. Empaquetamos los datos generales
+            datos_para_db = {
+                "cliente_id": self.cliente_apartado_id,
+                "usuario_id": 1, # ID de Marco Vargas
+                "caja_id": 1,
+                "total": float(self.text_total.value.replace("$", "").replace(",", "")),
+                "anticipo": float(self.tf_anticipo.value),
+                "fecha_entrega": self.fecha_entrega_apartado.strftime("%Y-%m-%d"),
+                "metodo": self.pago_actual
+            }
+
+            # 3. Llamamos a la nueva función del backend
+            exito, msj = crear_apartado_detallado_db(datos_para_db, lista_productos_json)
+            
+            if exito:
+                e.page.pop_dialog()
+                self._notificar(e.page, msj)
+                self.carrito.clear()
+                self.actualizar_vista_carrito()
+            else:
+                self._notificar(e.page, msj, True)
+
+        except Exception as ex:
+            self._notificar(e.page, f"Error de sistema: {str(ex)}", True)
+    
+    def _handle_imprimir_ticket_apartado(self,e):
+        
+        # 1. Ejecutamos la notificación (asíncrona)
+        # Pasamos la función, luego los argumentos posicionales
+        e.page.run_task(
+            NotificationHelper.mostrar_toast, 
+            e.page, 
+            "¡Ticket impreso y apartado registrado!", 
+            False # es_error
+        )
+
+    def _handle_cancelar_apartado(self,e):
+        
+        # 1. Cerramos el modal
+        e.page.pop_dialog()
+        # 1. Ejecutamos la notificación (asíncrona)
+        # Pasamos la función, luego los argumentos posicionales
+        e.page.run_task(
+            NotificationHelper.mostrar_toast, 
+            e.page, 
+            "Apartado Cancelado.", 
+            False # es_error
+        )
+
+    def _handle_finalizar_venta(self, e):
+        # 1. Validaciones de Senior
+        if not self.carrito:
+            self._notificar(e.page, "El carrito está vacío", True)
+            return
+        
+        # Aquí podrías agregar una validación de si se imprimió el ticket si fuera obligatorio
+        
+        try:
+            # 2. Procesamos datos con la capa de Lógica
+            total_limpio = VentaLogic.limpiar_monto(self.text_total.value)
+            detalle_productos = VentaLogic.preparar_detalle_venta(self.carrito)
+
+            # 3. Mandamos al Backend
+            # Nota: Usamos IDs fijos (1) para usuario y caja por ahora
+            exito, mensaje = registrar_venta_directa_db(
+                usuario_id=1, 
+                caja_id=1, 
+                total=total_limpio, 
+                detalles_lista=detalle_productos, 
+                metodo=self.pago_actual
+            )
+
+            if exito:
+                # 4. Éxito: Limpiamos carrito y notificamos
+                self.carrito.clear()
+                self.actualizar_vista_carrito() # Esto pone el total en $0.00
+                self._notificar(e.page, mensaje, False)
+            else:
+                self._notificar(e.page, mensaje, True)
+
+            e.page.pop_dialog()
+
+        except Exception as ex:
+            self._notificar(e.page, f"Error inesperado: {str(ex)}", True)
+        
+    # Aquí podrías agregar más lógica, como limpiar el carrito 
+    # self.limpiar_carrito()
         
    # --- Modal para imprimir ticket --- 
-    def modal_imprimir_ticket(self, e):
+    def modal_finalizar_venta(self, e):
         # Usamos ft.context.page para mostrar el diálogo directamente
         ft.context.page.show_dialog(
             ft.AlertDialog(
@@ -445,74 +609,159 @@ class PrincipalView:
                 actions=
                     ft.Column(
                         controls=[
-                            #Confirmar Monto a Pagar 
+
+                            #Imprimir ticket, aquí falta agregar la funcionalidad de mandar a imprimir
                             ft.TextButton(
-                            "Confirmar monto a pagar", 
+                            "Volver atrás", 
                             on_click=lambda _: ft.context.page.pop_dialog()
                         ),
                             #Imprimir ticket, aquí falta agregar la funcionalidad de mandar a imprimir
                             ft.TextButton(
+                            "Cancelar Venta", 
+                            #PROVISIONAL: solo habra un pop
+                            on_click=lambda _: ft.context.page.pop_dialog()
+                        ),
+
+                            #Imprimir ticket, aquí falta agregar la funcionalidad de mandar a imprimir
+                            ft.TextButton(
                             "Imprimir Ticket", 
-                            on_click=lambda _: self.modal_mensaje("Ticket impreso!")
+                            on_click=self._handle_imprimir_ticket
+                        ),
+                            #Confirmar Monto a Pagar 
+                            ft.TextButton(
+                            "Confirmar y finalizar venta", 
+                            on_click=self._handle_finalizar_venta
                         )
+                        
 
                     ]
                 ),
                 actions_alignment=ft.MainAxisAlignment.CENTER,
             )
         )
+    # --- Handler para Registrar Cliente ---
+    def _handle_registrar_cliente(self, e):
+        nombre = self.tf_nombre_cliente.value.strip()
+        telefono = self.tf_telefono_cliente.value.strip()
 
-    #Modal para "Registrar Cliente"
+        # Validación básica de Senior antes de ir a la BD
+        if not nombre or not telefono:
+            self._notificar(e.page, "Por favor llena todos los campos", True)
+            return
+
+        # Llamada al Backend
+        exito, mensaje = registrar_cliente(nombre, telefono)
+
+        if exito:
+            e.page.pop_dialog() # Cerramos el modal
+            self._notificar(e.page, mensaje, False)
+            
+            # Tip Pro: Actualizamos la lista de clientes de la barra de búsqueda 
+            # para que el nuevo cliente aparezca de inmediato sin reiniciar la app
+            if hasattr(self, 'todos_los_clientes'):
+                self.todos_los_clientes = fetch_clientes()
+        else:
+            self._notificar(e.page, mensaje, True)
+    
+
+    # --- Modal Actualizado ---
     def modal_registrar_cliente(self):
-        # Usamos ft.context.page para mostrar el diálogo directamente
+        # Definimos los campos como atributos de clase para leerlos en el Handler
+        self.tf_nombre_cliente = ft.TextField(
+            label="Nombre del Cliente",
+            border_color=self.COLOR_MARINO,
+            prefix_icon=ft.Icons.PERSON
+        )
+        self.tf_telefono_cliente = ft.TextField(
+            label="Teléfono (10 dígitos)",
+            border_color=self.COLOR_MARINO,
+            prefix_icon=ft.Icons.PHONE,
+            keyboard_type=ft.KeyboardType.NUMBER,
+            max_length=10 # Ayudamos al usuario a no pasarse
+        )
+
         ft.context.page.show_dialog(
             ft.AlertDialog(
-                modal=True,
-                expand=True,
-                title=ft.Text("Registrar Cliente", weight=ft.FontWeight.BOLD, color=self.COLOR_MARINO),
-                content=ft.Column(
-                    tight=True,
-                    spacing=15,
-                    controls=[
-
-                        #Anticipo
-                        ft.TextField(
-                            label="Nombre del Cliente",
-                        ),
-
-                        ft.TextField(
-                            label="Teléfono del Cliente",
-                        ),
-
-                    ],
-                ),
-                actions=
-                    ft.Column(
-                        controls=[
-
-                            #Confirmar Registrar Cliente 
-                            ft.TextButton(
-                            "Registrar Cliente", 
-                            #Realizar inserción para el cliente.
-                            on_click=lambda _: ft.context.page.pop_dialog()
-                        ),
-
-                        #Cancelar
-                            ft.TextButton(
-                            "Cancelar", 
-                            #Realizar inserción de apartado.
-                            on_click=lambda _: ft.context.page.pop_dialog()
-                        ),
-
-                    ]
-                ),
-                actions_alignment=ft.MainAxisAlignment.START,
+                title=ft.Text("Nuevo Registro de Cliente", weight="bold"),
+                content=ft.Column([
+                    self.tf_nombre_cliente,
+                    self.tf_telefono_cliente
+                ], tight=True, spacing=20),
+                actions=[
+                    ft.TextButton("Cancelar", on_click=lambda _: ft.context.page.pop_dialog()),
+                    self.btn_oscuro("Guardar Cliente", on_click=self._handle_registrar_cliente)
+                ]
             )
         )
+    
+    def _handle_confirmar_apartado(self, e):
+        # Recolección de datos para el Procedimiento Almacenado
+        # Nota: usuario_id y caja_id deberían venir de tu login, aquí pondremos 1 por ahora.
+        try:
+            # Tomamos el primer producto del carrito para cumplir con tu sp_CrearApartado
+            primer_producto_nombre = list(self.carrito.keys())[0]
+            producto_id = 1 # Aquí deberías tener el ID real del producto
+            cantidad = self.carrito[primer_producto_nombre]["cantidad"]
+
+            datos_para_db = {
+                "cliente_id": self.cliente_apartado_id,
+                "usuario_id": 1, # ID del usuario Marco Vargas
+                "caja_id": 1,
+                "total": float(self.text_total.value.replace("$", "")),
+                "anticipo": float(self.tf_anticipo.value),
+                "producto_id": producto_id,
+                "cantidad": cantidad,
+                "fecha_entrega": self.fecha_entrega_apartado.strftime("%Y-%m-%d"),
+                "metodo": self.pago_actual
+            }
+
+            exito, msj = crear_apartado_db(datos_para_db)
+            
+            if exito:
+                e.page.pop_dialog()
+                self._notificar(e.page, msj)
+                self.carrito.clear() # Limpiamos después de la operación exitosa
+                self.actualizar_vista_carrito()
+            else:
+                self._notificar(e.page, msj, True)
+
+        except IndexError:
+            self._notificar(e.page, "El carrito está vacío", True)
     
     
     #Modal para "Realizar apartado"
     def modal_realizar_apartado(self, e):
+
+        def _on_anticipo_change(e):
+            # Usamos nuestra lógica externa para calcular el restante
+            nuevo_restante = ApartadoLogic.calcular_monto_restante(
+                self.text_total.value, 
+                self.tf_anticipo.value
+            )
+            self.txt_restante_display.value = f"${nuevo_restante:.2f}"
+            self.txt_restante_display.update()
+
+        # 1. Calculamos el anticipo mínimo sugerido (20%)
+        anticipo_min = ApartadoLogic.calcular_anticipo_minimo(self.text_total.value)
+
+        # 2. Creamos los campos con sus referencias
+        self.tf_anticipo = ft.TextField(
+            label="Monto del anticipo",
+            value=str(anticipo_min),
+            on_change=_on_anticipo_change, # Evento para calcular en tiempo real
+            keyboard_type=ft.KeyboardType.NUMBER
+        )
+
+        self.txt_anticipo_minimo_display = ft.Text(
+            value=f"${anticipo_min:.2f}",
+            size=24, weight="bold"
+        )
+
+        self.txt_restante_display = ft.Text(
+            value=f"${ApartadoLogic.calcular_monto_restante(self.text_total.value, str(anticipo_min)):.2f}",
+            size=24, weight="bold"
+        )
+
         # Usamos ft.context.page para mostrar el diálogo directamente
         ft.context.page.show_dialog(
             ft.AlertDialog(
@@ -546,7 +795,7 @@ class PrincipalView:
                             content=ft.Row([
                                 ft.Text("pago minimo para apartar(20%)", size=16, color="black54"),
                                 #Realizar otra variable que calcule el 20% del valor total.
-                                ft.Text(self.text_total.value, size=24, weight=ft.FontWeight.BOLD, color="black"),
+                                self.txt_anticipo_minimo_display
                             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, spacing=50, expand=True),
                             bgcolor="#D1D9E6",
                             padding=20,
@@ -556,15 +805,13 @@ class PrincipalView:
                         #Fecha
                         self.agarrarFecha(),
                         #Anticipo
-                        ft.TextField(
-                            label="Monto del apartado",
-                        ),
+                        self.tf_anticipo,
 
                          ft.Container(
                             content=ft.Row([
                                 ft.Text("Monto restante para finiquitar apartado", size=16, color="black54"),
                                 #Realizar otra variable que calcule el restante a pagar de #self.text_total.value).
-                                ft.Text(self.text_total.value, size=24, weight=ft.FontWeight.BOLD, color="black"),
+                                self.txt_restante_display
                             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, spacing=50, expand=True),
                             bgcolor="#D1D9E6",
                             padding=20,
@@ -577,17 +824,25 @@ class PrincipalView:
                     ft.Column(
                         controls=[
 
+                        #Imprimir ticket, aquí falta agregar la funcionalidad de mandar a imprimir
+                            ft.TextButton(
+                            "Cancelar Apartado", 
+                            on_click=self._handle_cancelar_apartado
+                        ),
+                             
+                             #Imprimir ticket, aquí falta agregar la funcionalidad de mandar a imprimir
+                            ft.TextButton(
+                            "Imprimir Ticket", 
+                            on_click=self._handle_imprimir_ticket_apartado
+                        ),
+
                             #Confirmar Monto a Pagar 
                             ft.TextButton(
                             "Confirmar Apartado", 
                             #Realizar inserción de apartado.
-                            on_click=lambda _: ft.context.page.pop_dialog()
+                            on_click=self._handle_confirmar_apartado
                         ),
-                            #Imprimir ticket, aquí falta agregar la funcionalidad de mandar a imprimir
-                            ft.TextButton(
-                            "Imprimir Ticket", 
-                            on_click=lambda _: self.modal_mensaje("Ticket impreso!")
-                        ),
+                       
 
                     ]
                 ),
@@ -623,8 +878,8 @@ class PrincipalView:
             content=ft.Row([
                 ft.Text("Venta", size=28, weight=ft.FontWeight.BOLD, color=self.COLOR_MARINO, expand=True),
                 self.btn_oscuro("Consultar Ventas",on_click=lambda _: self.navegar("/consulta_ventas")),
-                self.btn_oscuro("Pagos"),
-                self.btn_blanco("Modificar Caja"),
+                self.btn_oscuro("Pagos", on_click=lambda _: self.navegar("/consulta_pagos")),
+                self.btn_blanco("Modificar Caja",on_click=lambda _: self.navegar("/caja")),
                 self.btn_oscuro("Realizar Corte")
             ]),
             padding=ft.Padding.symmetric(horizontal=15, vertical=10)
@@ -646,13 +901,13 @@ class PrincipalView:
                 self.btn_blanco("Crear como apartado", expand=1, icon=ft.Icons.STAR_BORDER, on_click=self.modal_realizar_apartado),
                 # Botón que dispara el modal
                 self.btn_blanco(
-                    "Imprimir Ticket", 
+                    "Finalizar Venta", 
                     expand=1, 
-                    icon=ft.Icons.PRINT, 
-                    on_click=self.modal_imprimir_ticket
+                    icon=ft.Icons.CHECK, 
+                    on_click=self.modal_finalizar_venta
                 ),
                 #Provisional, cambiar "modal mensaje" por función apropiada para eliminar lo que haya seleccionado y guardar en BD.
-                self.btn_blanco("Finalizar Venta", expand=1, icon=ft.Icons.CHECK,on_click=lambda _:self.modal_mensaje("Venta Finalizada!"))
+                # self.btn_blanco("Finalizar Venta", expand=1, icon=ft.Icons.CHECK,on_click=self._handle_finalizar_venta)
             ], spacing=10),
             padding=ft.Padding.symmetric(horizontal=15, vertical=5)
         )

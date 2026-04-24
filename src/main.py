@@ -6,6 +6,10 @@ from views.ventana_principal import PrincipalView
 from views.consulta_ventas import ConsultaVentasView
 from views.ventana_principal_produccion import PrincipalProduccionView
 from views.ventana_principal_consultas import PrincipalConsultasView
+from views.modificar_caja import ModificarCajaView
+from views.consulta_pagos import ConsultaPagosView
+
+
 class App:
     def __init__(self, page: ft.Page):
         self.page = page
@@ -25,6 +29,11 @@ class App:
         self.consulta_ventas_view = ConsultaVentasView(self.navegar)
         self.ventana_principal_produccion = PrincipalProduccionView(self.navegar)
         self.ventana_principal_consultas = PrincipalConsultasView(self.navegar)
+        self.ventana_modificar_caja = ModificarCajaView(self.navegar)
+        self.ventana_consulta_pagos = ConsultaPagosView(self.navegar)
+        
+        #PROXIMO: Ventanas CRUD para producción (Catalogo de panes y producción)
+        #PROXIMO: Ventanas CRUD para consultas.
 
         # Configurar eventos
         self.page.on_route_change = self.route_change
@@ -56,6 +65,10 @@ class App:
             self.page.views.append(self.ventana_principal_produccion.build())
         elif self.page.route == "/ventana_principal_consultas":
             self.page.views.append(self.ventana_principal_consultas.build())
+        elif self.page.route == "/caja":
+            self.page.views.append(self.ventana_modificar_caja.build())
+        elif self.page.route == "/consulta_pagos":
+            self.page.views.append(self.ventana_consulta_pagos.build())
         
         self.page.update()
 
